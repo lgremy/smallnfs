@@ -132,9 +132,13 @@ def line_sieve(p, r, H, L, side):
 
 # Franke Kleinjung vectors
 # TODO: cleaner version
-def reduce_qlattice(M, H0):
-    a0 = -r; b0 = h; a1 = 0; b1 = 1; k = 0
-    hI = 2 * H0; mhI = -hI;
+def reduce_qlattice(M, H0, r, h):
+    a0 = -r
+    b0 = h
+    a1 = 0
+    b1 = 1
+    k = 0
+    hI = 2 * H0; mhI = -hI
 
     while b0 >= hI:
         k = int(float(a0) / float(b0))
@@ -143,7 +147,7 @@ def reduce_qlattice(M, H0):
             a0 = a0 - b0
         else:
             a0 = a0 % b0
-        a1 = a1 - k * b1;
+        a1 = a1 - k * b1
         if a0 > mhI:
             break;
         k = int(float(b0) / float(a0))
@@ -152,7 +156,7 @@ def reduce_qlattice(M, H0):
             b0 = b0 - a0
         else:
             b0 = b0 % a0
-        b1 = b1 - k * a1;
+        b1 = b1 - k * a1
         if b0 < hI:
             break
         k = int(float(a0) / float(b0))
@@ -161,7 +165,7 @@ def reduce_qlattice(M, H0):
             a0 = a0 - b0
         else:
             a0 = a0 % b0
-        a1 = a1 - k * b1;
+        a1 = a1 - k * b1
         if a0 > mhI:
             break
         k = int(float(b0) / float(a0))
@@ -170,27 +174,27 @@ def reduce_qlattice(M, H0):
             b0 = b0 - a0
         else:
             b0 = b0 % a0
-        b1 = b1 - k * a1;
+        b1 = b1 - k * a1
     k = b0 - hI - a0;
     if b0 > -a0:
         if a0 == 0:
             return 0
-        k = int(float(k )/ float(a0))
+        k = int(float(k)/ float(a0))
         b0 = b0 - k * a0
-        b1 = b1 - k * a1;
+        b1 = b1 - k * a1
     else:
         if b0 == 0:
             return 0
-        k = int(float(k )/ float(b0))
+        k = int(float(k)/ float(b0))
         a0 = a0 + k * b0
-        a1 = a1 + k * b1;
+        a1 = a1 + k * b1
     assert(a0 > mhI); assert(0 >= a0); assert(0 <= b0); assert(b0 < hI); assert(a1 > 0); assert(b1 > 0)
 
     return (1, vector([a0, a1]), vector([b0, b1]), vector([a0, a1]) + vector([b0, b1]))
 
 # Franke-Kleinjung sieve
 def lattice_sieve(p, r, H, L, side):
-    return "To be continued"
+    reduce_qlattice()
 
 # Arrange matrix special-q
 def arrange_matrix_spq(M):
