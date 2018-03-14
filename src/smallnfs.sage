@@ -223,16 +223,32 @@ def arrange_matrix_spq(M):
 
 # Verify smoothness of a0 + a1 * x
 def good_rel_spq(a0, a1, f, q, qside, avoid):
+    fac = []
     test = True
     j = 0
     while j < len(f) and test:
         n = norm(a0 + a1 * x, f[j])
         if qside == j:
             n = n / q
-        fac = is_smooth_and_avoid(n, B[j], avoid[j])
-        test = test and fac[0]
-        j = j + 1
-    return test
+        facto = is_smooth_and_avoid(n, B[j], avoid[j])
+        test = test and facto[0]
+        if test:
+            # facto != 0
+            facto = list(facto[1])
+            # Add q to facto, since it is removed upper
+            if qside == j:
+                if q in [i[0] for i in facto]:
+                    index = [i[0] for i in facto].index(q)
+                    # Update the tuple by recreating it
+                    facto[index] = (q, facto[index][1] + 1)
+                else:
+                    facto.append((q, 1))
+                    if facto[len(facto) - 1][0] < facto[len(facto) - 2][0]:
+                        # facto is not sorted by increasing primes
+                        facto.sort(key=lambda t: t[0])
+            fac.append(facto)
+            j = j + 1
+    return (test, fac)
 
 # Root in q-lattice
 def root_qlattice(M, i):
@@ -269,11 +285,11 @@ def spq_sieve(ideal, qside, f, B, H, F, avoid, fbb, thresh, nb_rel):
             if test:
                 [a0, a1] = list(vector((i0, i1)) * M)
                 if gcd(a0, a1) == 1 and a1 >= 0:
-                    if good_rel_spq(a0, a1, f, ideal[0], qside, avoid):
-                        a = a0 + a1 * x
-                        rel = [a]
-                        for j in range(len(f)):
-                            rel.append(norm(a, f[j]).factor())
+                    (test, fac) = good_rel_spq(a0, a1, f, ideal[0], qside, avoid)
+                    if test:
+                        rel = [a0 + a1 * x]
+                        for j in range(len(fac)):
+                            rel.append(fac[j])
                         R.append(tuple(rel))
                     if len(R) == nb_rel:
                         return R
