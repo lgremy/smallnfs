@@ -118,18 +118,20 @@ def norm(a, f):
 
 # Line sieve
 # p is prime, r is positive
-def line_sieve(p, r, H, L, side):
+def line_sieve(p, r, H, array_norms, side):
     x0 = 0
     for e1 in range(0, H[1]):
         e0 = x0
         while e0 < H[0]:
             if e0 >= -H[0]:
-                L[e0 + H[0]][e1][side] = L[e0 + H[0]][e1][side] / p
+                array_norms[e0 + H[0]][e1][side] = array_norms[e0 +
+                        H[0]][e1][side] / p
             e0 = e0 + p
         e0 = x0 - p
         while e0 >= -H[0]:
             if e0 < H[0]:
-                L[e0 + H[0]][e1][side] = L[e0 + H[0]][e1][side] / p
+                array_norms[e0 + H[0]][e1][side] = array_norms[e0 +
+                        H[0]][e1][side] / p
             e0 = e0 - p
         x0 = x0 + r
         if x0 >= H[0]:
@@ -265,13 +267,18 @@ def spq_sieve(ideal, qside, f, B, H, F, avoid, fbb, thresh, nb_rel):
     M = ideal_matrix(ideal).LLL()
     M = arrange_matrix_spq(M)
     R = []
-    L = []
+    array_norms = []
+    # Initialization of the norms
     for i0 in range(-H[0], H[0]):
-        L.append([])
+        array_norms.append([-1 for i in range(0, H[1])])
         for i1 in range(0, H[1]):
             [a0, a1] = list(vector((i0, i1)) * M)
             a = a0 + a1 * x
-            L[i0 + H[0]].append([norm(a, f[0]), norm(a, f[1])])
+            array_norms[i0 + H[0]][i1] = [norm(a, fj) for fj in f]
+            # Remove the special-q from the norm
+            array_norms[i0 + H[0]][i1][qside] = array_norms[i0 + H[0]][i1][qside] / ideal[0]
+
+    # Sieve
     for j in range(len(f)):
         for i in F[j]:
             if i[0] > fbb[j]:
@@ -279,10 +286,12 @@ def spq_sieve(ideal, qside, f, B, H, F, avoid, fbb, thresh, nb_rel):
             if (i[1].degree() == 1):
                 r = root_qlattice(M, i)
                 if r != None:
-                    line_sieve(i[0], r, H, L, j)
+                    line_sieve(i[0], r, H, array_norms, j)
+
+    # Cofactorization
     for i0 in range(-H[0], H[0]):
         for i1 in range(0, H[1]):
-            norms = L[i0 + H[0]][i1]
+            norms = array_norms[i0 + H[0]][i1]
             test = True
             for j in range(len(f)):
                 test = test and (norms[j] < thresh[j])
