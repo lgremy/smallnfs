@@ -285,12 +285,21 @@ def dup(L):
 
 
 # High level function to perform relation collection
-def find_rel_spq_sieve(f, B, H, F, avoid, fbb, thresh):
+def find_rel_spq_sieve(f, B, H, F, avoid, fbb, thresh, qside, qrange):
     R = []
-    for i in F[1]:
-        if i[0] > fbb[1] and i[1].degree() == 1:
-            Q = spq_sieve(i, 1, f, B, H, F, avoid, fbb, thresh, -1)
-            R = R + Q
+    q = qrange[0]
+    if not q.is_prime():
+        q = next_prime(q)
+    fqside = f[qside]
+    lc = fqside.leading_coefficient()
+    lcp = fqside.coefficients(sparse=False)[f[qside].degree() - 1]
+    while q < qrange[1]:
+        (ideals, _) = build_ideal(fqside, q, lc, lcp)
+        for i in ideals:
+            if i[0] > fbb[qside] and i[1].degree() == 1:
+                Q = spq_sieve(i, qside, f, B, H, F, avoid, fbb, thresh, -1)
+                R = R + Q
+        q = next_prime(q)
     return dup(R)
 
 # ---------- Linear algebra ----------
@@ -405,12 +414,14 @@ def main(d, p, B, H, l, fbb, thresh):
     m = floor(p^(1/(d + 1)))
     f = pol_sel(m, d, p)
 
-    # Build factor basis
+    # Build sieve bases
+    (Fbb, avoid) = build_fb(f, fbb)
+    # Build factor bases
     (F, avoid) = build_fb(f, B)
 
     print("Relation collection")
     # TODO: stop relation collection when len(R) >> len(F[0]) + len(F[1])
-    R = find_rel_spq_sieve(f, B, H, F, avoid, fbb, thresh)
+    R = find_rel_spq_sieve(f, B, H, Fbb, avoid, fbb, thresh, 1, [fbb[1], B[1]])
     assert(len(R) >= len(F[0]) + len(F[1]))
 
     print("Linear algebra")
@@ -442,4 +453,4 @@ def main(d, p, B, H, l, fbb, thresh):
     return (V, col1, SM1)
 
 # ---------- Run ----------
-print(main(d, p, B, H, l, fbb, thresh))
+# print(main(d, p, B, H, l, fbb, thresh))
