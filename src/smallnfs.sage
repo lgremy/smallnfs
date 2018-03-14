@@ -131,6 +131,9 @@ def line_sieve(p, r, H, L, side):
             x0 = x0 - p
 
 # Franke Kleinjung vectors
+# Implementation based on the one of CADO-NFS
+# (http://cado-nfs.gforge.inria.fr), see file sieve/las-plattice.h,
+# function reduce_plattice_original.
 # TODO: cleaner version
 def reduce_qlattice(M, H0, r, h):
     a0 = -r
@@ -138,9 +141,9 @@ def reduce_qlattice(M, H0, r, h):
     a1 = 0
     b1 = 1
     k = 0
-    hI = 2 * H0; mhI = -hI
+    I = 2 * H0
 
-    while b0 >= hI:
+    while b0 >= I:
         k = int(float(a0) / float(b0))
         if bool(a0 < 0) != bool(b0 < 0):
             a0 = a0 % b0
@@ -148,7 +151,7 @@ def reduce_qlattice(M, H0, r, h):
         else:
             a0 = a0 % b0
         a1 = a1 - k * b1
-        if a0 > mhI:
+        if a0 > -I:
             break;
         k = int(float(b0) / float(a0))
         if bool(a0 < 0) != bool(b0 < 0):
@@ -157,7 +160,7 @@ def reduce_qlattice(M, H0, r, h):
         else:
             b0 = b0 % a0
         b1 = b1 - k * a1
-        if b0 < hI:
+        if b0 < I:
             break
         k = int(float(a0) / float(b0))
         if bool(a0 < 0) != bool(b0 < 0):
@@ -166,7 +169,7 @@ def reduce_qlattice(M, H0, r, h):
         else:
             a0 = a0 % b0
         a1 = a1 - k * b1
-        if a0 > mhI:
+        if a0 > -I:
             break
         k = int(float(b0) / float(a0))
         if bool(a0 < 0) != bool(b0 < 0):
@@ -175,7 +178,7 @@ def reduce_qlattice(M, H0, r, h):
         else:
             b0 = b0 % a0
         b1 = b1 - k * a1
-    k = b0 - hI - a0;
+    k = b0 - I - a0;
     if b0 > -a0:
         if a0 == 0:
             return 0
@@ -188,9 +191,10 @@ def reduce_qlattice(M, H0, r, h):
         k = int(float(k)/ float(b0))
         a0 = a0 + k * b0
         a1 = a1 + k * b1
-    assert(a0 > mhI); assert(0 >= a0); assert(0 <= b0); assert(b0 < hI); assert(a1 > 0); assert(b1 > 0)
+    assert(a0 > -I); assert(0 >= a0); assert(0 <= b0); assert(b0 < I)
+    assert(a1 > 0); assert(b1 > 0)
 
-    return (1, vector([a0, a1]), vector([b0, b1]), vector([a0, a1]) + vector([b0, b1]))
+    return (1, vector([a0, a1]), vector([b0, b1]))
 
 # Franke-Kleinjung sieve
 def lattice_sieve(p, r, H, L, side):
@@ -262,8 +266,9 @@ def spq_sieve(ideal, qside, f, B, H, F, avoid, fbb, thresh, nb_rel):
                 [a0, a1] = list(vector((i0, i1)) * M)
                 if gcd(a0, a1) == 1 and a1 >= 0:
                     if good_rel_spq(a0, a1, f, ideal[0], qside, avoid):
-                        R.append((a0 + a1 * x, norm(a0 + a1 * x, f[0]).factor(),
-                            norm(a0 + a1 * x, f[1]).factor()))
+                        R.append(
+                                (a0 + a1 * x, norm(a0 + a1 * x, f[0]).factor(),
+                                    norm(a0 + a1 * x, f[1]).factor()))
                     if len(R) == nb_rel:
                         return R
     return R
@@ -362,16 +367,21 @@ def associate(F, K, nk, column_1, nb_sm_1):
     return (V, col1, SM1)
 
 # ---------- Individual logarithm ----------
-# Compute individul logarithm of an ideal above next_prime(B[0]) in K0 (always exists)
+# Compute individul logarithm of an ideal above next_prime(B[0]) in K0 (always
+# exists)
 def ind_log_0(f, B, H, F, avoid, V, col1, fbb, thresh, SM1, sm_1_exp, l):
     q = next_prime(B[0])
     # Assume we can have a relation with the previous setting
-    spq = build_ideal(f[0], q, f[0].leading_coefficient(), f[0].coefficients(sparse=False)[f[0].degree() - 1])[0][0]
+    spq = build_ideal(f[0], q, f[0].leading_coefficient(),
+            f[0].coefficients(sparse=False)[f[0].degree() - 1])[0][0]
     # Take the first relation
     r = spq_sieve(spq, 0, f, B, H, F, avoid, fbb, thresh, -1)[0]
     pseudo_ideal_facto_0 = pseudo_ideal_facto(r[0], r[1])
-    coeff_spq = Integer(pseudo_ideal_facto_0[[i[0] for i in pseudo_ideal_facto_0].index(spq)][1])
-    vlog = (-(sum([V[0][i[0]] * i[1] for i in pseudo_ideal_facto_0 if i[0] in V[0].keys()])) + (sum([V[1][i[0]] * i[1] for i in pseudo_ideal_facto(r[0], r[2])])) - col1)
+    coeff_spq = Integer(pseudo_ideal_facto_0[[i[0] for i in
+        pseudo_ideal_facto_0].index(spq)][1])
+    vlog = (-(sum([V[0][i[0]] * i[1] for i in pseudo_ideal_facto_0 if i[0] in
+        V[0].keys()])) + (sum([V[1][i[0]] * i[1] for i in
+            pseudo_ideal_facto(r[0], r[2])])) - col1)
     if len(SM1) != 0:
         sm = compute_SM(r[0], sm_1_exp, len(SM1), l, f[1])
         for i in range(len(SM1)):
@@ -381,10 +391,13 @@ def ind_log_0(f, B, H, F, avoid, V, col1, fbb, thresh, SM1, sm_1_exp, l):
     V[0][spq] = vlog
 
 # ---------- Data ----------
-P.<x> = ZZ[]; l = 3141592653589793238462773; p = 2 * l + 1; d = 3; B = [4096, 4096]; H = [2^7, 2^7]; fbb = [B[0] // 4, B[1] // 4]; thresh = [B[0]^3, B[1]^3]
-
-# (l, p) = build_target(20); d = 2; B = [2^7, 2^7]; H = [2^5, 2^5]; fbb = [B[0] // 4, B[1] // 4]; thresh = [B[0]^3, B[1]^3]
-# (l, p) = build_target(10); d = 3; B = [2^7, 2^7]; H = [2^5, 2^5]; fbb = [B[0] // 4, B[1] // 4]; thresh = [B[0]^3, B[1]^3]
+P.<x> = ZZ[];
+# l = 3141592653589793238462773; p = 2 * l + 1; d = 3; B = [4096, 4096]
+# H = [2^7, 2^7]; fbb = [B[0] // 4, B[1] // 4]; thresh = [B[0]^3, B[1]^3]
+(l, p) = build_target(20); d = 2; B = [2^7, 2^7]; H = [2^5, 2^5]
+fbb = [B[0] // 4, B[1] // 4]; thresh = [B[0]^3, B[1]^3]
+# (l, p) = build_target(10); d = 3; B = [2^7, 2^7]; H = [2^5, 2^5]
+# fbb = [B[0] // 4, B[1] // 4]; thresh = [B[0]^3, B[1]^3]
 
 # ---------- Main ----------
 def main(d, p, B, H, l, fbb, thresh):
