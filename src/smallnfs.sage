@@ -1,5 +1,7 @@
 # This implementation works only when f[0] = x - m
 
+VERBOSE=1
+
 P.<x> = ZZ[]
 
 # ---------- Utilities ----------
@@ -56,6 +58,8 @@ def pol_sel(m, d, p):
         f1[i] = (p - r) // m^i
         r = r + f1[i] * m^i
     f1 = P(f1)
+    if VERBOSE >= 1:
+        print("# Polynomials are f0 = {0} and f1 = {1}.".format(f0, P(f1)))
     return (f0, P(f1))
 
 # Try to build an ideal over q in the number field defined by f
@@ -266,6 +270,8 @@ def spq_sieve(ideal, qside, f, B, H, F, avoid, fbb, thresh, nb_rel):
     assert(Q(ideal[1]) in [fac[0] for fac in Q(f[qside]).factor()])
     M = ideal_matrix(ideal).LLL()
     M = arrange_matrix_spq(M)
+    if VERBOSE >= 1:
+        print("# Reduced basis of the q-lattice: {0}.".format(list(M)))
     R = []
     array_norms = []
     # Initialization of the norms
@@ -277,6 +283,12 @@ def spq_sieve(ideal, qside, f, B, H, F, avoid, fbb, thresh, nb_rel):
             array_norms[i0 + H[0]][i1] = [norm(a, fj) for fj in f]
             # Remove the special-q from the norm
             array_norms[i0 + H[0]][i1][qside] = array_norms[i0 + H[0]][i1][qside] / ideal[0]
+    if VERBOSE >= 2:
+        L = []
+        for i0 in range(-H[0], H[0]):
+            L = L + array_norms[i0 + H[0]]
+        for j in range(len(f)):
+            print("# Average value of the norms (bit size) on side {0}: {1}.".format(j, float(log(mean([i[j] for i in L]), 2))))
 
     # Sieve
     for j in range(len(f)):
@@ -306,7 +318,12 @@ def spq_sieve(ideal, qside, f, B, H, F, avoid, fbb, thresh, nb_rel):
                             rel.append(fac[j])
                         R.append(tuple(rel))
                     if len(R) == nb_rel:
+                        for i in R:
+                            print(i)
                         return R
+
+    for i in R:
+        print(i)
     return R
 
 # Remove duplicate relations
@@ -331,6 +348,8 @@ def find_rel_spq_sieve(f, B, H, F, avoid, fbb, thresh, qside, qrange):
         (ideals, _) = build_ideal(fqside, q)
         for i in ideals:
             if i[0] > fbb[qside] and i[1].degree() == 1:
+                if VERBOSE >= 1:
+                    print("# Sieve with special-q ({0}, {1}).".format(i[0], i[1]))
                 Q = spq_sieve(i, qside, f, B, H, F, avoid, fbb, thresh, -1)
                 R = R + Q
         q = next_prime(q)
@@ -442,7 +461,7 @@ fbb = [B[0] // 4, B[1] // 4]; thresh = [B[0]^3, B[1]^3]
 
 # ---------- Main ----------
 def main(d, p, B, H, l, fbb, thresh):
-    print("Polynomial selection")
+    print("# Polynomial selection")
     m = floor(p^(1/(d + 1)))
     f = pol_sel(m, d, p)
 
@@ -451,12 +470,12 @@ def main(d, p, B, H, l, fbb, thresh):
     # Build factor bases
     (F, avoid) = build_fb(f, B)
 
-    print("Relation collection")
+    print("# Relation collection")
     # TODO: stop relation collection when len(R) >> len(F[0]) + len(F[1])
     R = find_rel_spq_sieve(f, B, H, Fbb, avoid, fbb, thresh, 1, [fbb[1], B[1]])
     assert(len(R) >= len(F[0]) + len(F[1]))
 
-    print("Linear algebra")
+    print("# Linear algebra")
     sm_1_exp = sm_exp(f[1], l)
     nb_sm_1 = nb_SM(f[1])
     column_1 = 0
@@ -472,7 +491,7 @@ def main(d, p, B, H, l, fbb, thresh):
     K = K[0]
     (V, col1, SM1) = associate(F, K, nk, column_1, nb_sm_1)
 
-    print("Individual logarithm")
+    print("# Individual logarithm")
     ind_log_0(f, B, H, F, avoid, V, col1, fbb, thresh, SM1, sm_1_exp, l)
     # Assert on rational side
     for i in range(len(V[0].keys())):
