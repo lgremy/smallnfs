@@ -400,7 +400,6 @@ def ind_log_0(f, B, H, F, avoid, V, col1, fbb, thresh, SM1, sm_1_exp, l):
     V[0][spq] = vlog
 
 # ---------- Data ----------
-P.<x> = ZZ[];
 # l = 3141592653589793238462773; p = 2 * l + 1; d = 3; B = [4096, 4096]
 # H = [2^7, 2^7]; fbb = [B[0] // 4, B[1] // 4]; thresh = [B[0]^3, B[1]^3]
 (l, p) = build_target(20); d = 2; B = [2^7, 2^7]; H = [2^5, 2^5]
