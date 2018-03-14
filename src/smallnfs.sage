@@ -21,7 +21,7 @@ def pseudo_ideal_facto(a, rel):
             Q.<y> = GF(i[0])[]
             for fac in Q(a).factor():
                 if fac[0].degree() == 1:
-                    facto.append(((i[0], P(fac[0])), i[1]))
+                    facto.append(((i[0], P(fac[0]) - i[0]), i[1]))
     return facto
 
 # Square and multiply
@@ -69,7 +69,7 @@ def build_ideal(poly, q, lc, lcp):
         Q.<y> = GF(q)[]
         for fac in Q(poly).factor():
             if fac[0].degree() == 1 and fac[1] == 1:
-                ideal.append((q, P(fac[0])))
+                ideal.append((q, P(fac[0]) - q))
     else:
         avoid.append(q)
     return (ideal, avoid)
@@ -246,29 +246,29 @@ def spq_sieve(ideal, qside, f, B, H, F, avoid, fbb, thresh, nb_rel):
     L = [[[norm(P(list(vector((i0, i1)) * M)), f[0]), norm(P(list(vector((i0,
         i1)) * M)), f[1])] for i1 in range(0, H[1])] for i0 in range(-H[0],
             H[0])]
-    for i in F[0]:
-        if i[0] > fbb[0]:
-            break
-        r = root_qlattice(M, i)
-        if r != None:
-            line_sieve(i[0], r, H, L, 0)
-    for i in F[1]:
-        if i[0] > fbb[1]:
-            break
-        if (i[1].degree() == 1):
-            r = root_qlattice(M, i)
-            if r != None:
-                line_sieve(i[0], r, H, L, 1)
+    for j in range(len(f)):
+        for i in F[j]:
+            if i[0] > fbb[j]:
+                break
+            if (i[1].degree() == 1):
+                r = root_qlattice(M, i)
+                if r != None:
+                    line_sieve(i[0], r, H, L, j)
     for i0 in range(-H[0], H[0]):
         for i1 in range(0, H[1]):
-            if (L[i0 + H[0]][i1][0] < thresh[0] and L[i0 + H[0]][i1][1] <
-                    thresh[1]):
+            norms = L[i0 + H[0]][i1]
+            test = True
+            for j in range(len(f)):
+                test = test and norms[j] < thresh[j]
+            if test:
                 [a0, a1] = list(vector((i0, i1)) * M)
                 if gcd(a0, a1) == 1 and a1 >= 0:
                     if good_rel_spq(a0, a1, f, ideal[0], qside, avoid):
-                        R.append(
-                                (a0 + a1 * x, norm(a0 + a1 * x, f[0]).factor(),
-                                    norm(a0 + a1 * x, f[1]).factor()))
+                        a = a0 + a1 * x
+                        rel = [a]
+                        for j in range(len(f)):
+                            rel.append(norm(a, f[j]).factor())
+                        R.append(tuple(rel))
                     if len(R) == nb_rel:
                         return R
     return R
@@ -439,7 +439,6 @@ def main(d, p, B, H, l, fbb, thresh):
     nk = not_known(K)
     K = K[0]
     (V, col1, SM1) = associate(F, K, nk, column_1, nb_sm_1)
-
 
     print("Individual logarithm")
     ind_log_0(f, B, H, F, avoid, V, col1, fbb, thresh, SM1, sm_1_exp, l)
