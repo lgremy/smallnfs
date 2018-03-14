@@ -221,13 +221,13 @@ def arrange_matrix_spq(M):
         M.swap_rows(0, 1)
     return M
 
-# Verify smoothness of a0 + a1 * x
-def good_rel_spq(a0, a1, f, q, qside, avoid):
+# Verify smoothness of a
+def good_rel_spq(a, f, q, qside, avoid):
     fac = []
     test = True
     j = 0
     while j < len(f) and test:
-        n = norm(a0 + a1 * x, f[j])
+        n = norm(a, f[j])
         if qside == j:
             n = n / q
         facto = is_smooth_and_avoid(n, B[j], avoid[j])
@@ -265,9 +265,13 @@ def spq_sieve(ideal, qside, f, B, H, F, avoid, fbb, thresh, nb_rel):
     M = ideal_matrix(ideal).LLL()
     M = arrange_matrix_spq(M)
     R = []
-    L = [[[norm(P(list(vector((i0, i1)) * M)), f[0]), norm(P(list(vector((i0,
-        i1)) * M)), f[1])] for i1 in range(0, H[1])] for i0 in range(-H[0],
-            H[0])]
+    L = []
+    for i0 in range(-H[0], H[0]):
+        L.append([])
+        for i1 in range(0, H[1]):
+            [a0, a1] = list(vector((i0, i1)) * M)
+            a = a0 + a1 * x
+            L[i0 + H[0]].append([norm(a, f[0]), norm(a, f[1])])
     for j in range(len(f)):
         for i in F[j]:
             if i[0] > fbb[j]:
@@ -285,9 +289,10 @@ def spq_sieve(ideal, qside, f, B, H, F, avoid, fbb, thresh, nb_rel):
             if test:
                 [a0, a1] = list(vector((i0, i1)) * M)
                 if gcd(a0, a1) == 1 and a1 >= 0:
-                    (test, fac) = good_rel_spq(a0, a1, f, ideal[0], qside, avoid)
+                    a = a0 + a1 * x
+                    (test, fac) = good_rel_spq(a, f, ideal[0], qside, avoid)
                     if test:
-                        rel = [a0 + a1 * x]
+                        rel = [a]
                         for j in range(len(fac)):
                             rel.append(fac[j])
                         R.append(tuple(rel))
