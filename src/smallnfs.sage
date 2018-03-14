@@ -1,11 +1,11 @@
 # This implementation works only when f[0] = x - m
 
 P.<x> = ZZ[]
-rsa1024 = 1.35066410865995223349603216278805969938881475605667027524485143851526510604859533833940287150571909441798207282164471551373680419703964191743046496589274256239341020864383202110372958725762358509643110564073501508187510676594629205563685529475213500852879416377328533906109750544334999811150056977236890927563
 
 # ---------- Utilities ----------
 # Produce a prime l of n bits coming from RSA-1024 and p = 2 * l + 1
 def build_target(n):
+    rsa1024 = 1.35066410865995223349603216278805969938881475605667027524485143851526510604859533833940287150571909441798207282164471551373680419703964191743046496589274256239341020864383202110372958725762358509643110564073501508187510676594629205563685529475213500852879416377328533906109750544334999811150056977236890927563
     l_tmp = next_prime(round(rsa1024 * 10^floor(n * log(2, 10))))
     while not (2 * l_tmp + 1).is_prime():
         l_tmp = next_prime(l_tmp)
@@ -24,7 +24,8 @@ def pseudo_ideal_facto(a, rel):
                     facto.append(((i[0], P(fac[0]) - i[0]), i[1]))
     return facto
 
-# Square and multiply
+# Square and multiply (instead of power_mod, allow to compute it for univariate
+# polynomial ring over ring of integers modulo a prime)
 def pow_mod(a, n, f):
     if n == 0:
         return  1
@@ -35,7 +36,7 @@ def pow_mod(a, n, f):
     else:
         return (a * pow_mod((a * a) % f, (n - 1) / 2, f)) % f
 
-# a^(lb*(p-1)/l) == b^(la*(p-1)/l)
+# Assert if a^(lb*(p-1)/l) == b^(la*(p-1)/l)
 def assert_rat_side(a, la, b, lb, p, l):
     assert(power_mod(a, lb *  (p - 1) // l, p) == power_mod(b, la *  (p - 1) //
         l, p))
@@ -57,34 +58,36 @@ def pol_sel(m, d, p):
     f1 = P(f1)
     return (f0, P(f1))
 
-def build_ideal(poly, q, lc, lcp):
+# Try to build an ideal over q in the number field defined by f
+def build_ideal(f, q):
+    lc = f.leading_coefficient()
+    lcp = f.coefficients(sparse=False)[f.degree() - 1]
     ideal = []
+    # Avoid the ideals if f.discriminant() mod q == 0 or
+    # if lc mod q == 0 and lcp mod q == 0
     avoid = []
-    if poly.discriminant() % q != 0:
+    if f.discriminant() % q != 0:
         if lc % q == 0 and lcp % q != 0:
             ideal.append((q, P(0))) # q is purely projective
         if lc % q == 0 and lcp % q == 0:
             avoid.append(q)
             return (ideal, avoid)
         Q.<y> = GF(q)[]
-        for fac in Q(poly).factor():
+        for fac in Q(f).factor():
             if fac[0].degree() == 1 and fac[1] == 1:
                 ideal.append((q, P(fac[0]) - q))
     else:
         avoid.append(q)
     return (ideal, avoid)
 
-# Build factor basis
+# Build factor bases
 def build_fb(f, B):
     avoid = []; F = []
     for i in range(len(f)):
         avoidtmp = []
         Ftmp = []
-        poly = f[i]
-        lc = poly.leading_coefficient()
-        lcp = poly.coefficients(sparse=False)[poly.degree() - 1]
         for q in primes(B[i]):
-            (ideals, avoids) = build_ideal(poly, q, lc, lcp)
+            (ideals, avoids) = build_ideal(f[i], q)
             for k in ideals:
                 Ftmp.append(k)
             for k in avoids:
@@ -94,7 +97,8 @@ def build_fb(f, B):
     return (F, avoid)
 
 # ---------- Relation collection ----------
-# Return True if F is B-smooth and do not have factor in avoid
+# Return True if F is B-smooth and do not have factor in avoid. Return also the
+# factorization, if True
 def is_smooth_and_avoid(N, B, avoid):
     if N == 0:
         return (False, 0)
@@ -108,11 +112,12 @@ def is_smooth_and_avoid(N, B, avoid):
         return (True, fac)
     return (False, 0)
 
-# Compute norm
+# Compute norm of a in the number field defined by f
 def norm(a, f):
     return abs(a.resultant(f))
 
 # Line sieve
+# p is prime, r is positive
 def line_sieve(p, r, H, L, side):
     x0 = 0
     for e1 in range(0, H[1]):
@@ -218,15 +223,16 @@ def arrange_matrix_spq(M):
 
 # Verify smoothness of a0 + a1 * x
 def good_rel_spq(a0, a1, f, q, qside, avoid):
-    n = norm(a0 + a1 * x, f[0])
-    if qside == 0:
-        n = n / q
-    fac0 = is_smooth_and_avoid(n, B[0], avoid[0])
-    n = norm(a0 + a1 * x, f[1])
-    if qside == 1:
-        n = n / q
-    fac1 = is_smooth_and_avoid(n, B[1], avoid[1])
-    return fac0[0] and fac1[0]
+    test = True
+    j = 0
+    while j < len(f) and test:
+        n = norm(a0 + a1 * x, f[j])
+        if qside == j:
+            n = n / q
+        fac = is_smooth_and_avoid(n, B[j], avoid[j])
+        test = test and fac[0]
+        j = j + 1
+    return test
 
 # Root in q-lattice
 def root_qlattice(M, i):
@@ -259,7 +265,7 @@ def spq_sieve(ideal, qside, f, B, H, F, avoid, fbb, thresh, nb_rel):
             norms = L[i0 + H[0]][i1]
             test = True
             for j in range(len(f)):
-                test = test and norms[j] < thresh[j]
+                test = test and (norms[j] < thresh[j])
             if test:
                 [a0, a1] = list(vector((i0, i1)) * M)
                 if gcd(a0, a1) == 1 and a1 >= 0:
@@ -291,10 +297,8 @@ def find_rel_spq_sieve(f, B, H, F, avoid, fbb, thresh, qside, qrange):
     if not q.is_prime():
         q = next_prime(q)
     fqside = f[qside]
-    lc = fqside.leading_coefficient()
-    lcp = fqside.coefficients(sparse=False)[f[qside].degree() - 1]
     while q < qrange[1]:
-        (ideals, _) = build_ideal(fqside, q, lc, lcp)
+        (ideals, _) = build_ideal(fqside, q)
         for i in ideals:
             if i[0] > fbb[qside] and i[1].degree() == 1:
                 Q = spq_sieve(i, qside, f, B, H, F, avoid, fbb, thresh, -1)
@@ -303,17 +307,17 @@ def find_rel_spq_sieve(f, B, H, F, avoid, fbb, thresh, qside, qrange):
     return dup(R)
 
 # ---------- Linear algebra ----------
-# Number of SMs
+# Number of Schirokauer maps
 def nb_SM(f):
     return len(f.real_roots()) + (len(f.complex_roots()) -
             len(f.real_roots())) / 2 - 1
 
-# Compute SM exponent
+# Compute the Schirokauer map exponent
 def sm_exp(f, l):
     Q.<y> = GF(l)[]
     return lcm([l^i[0].degree() - 1 for i in Q(f).factor()])
 
-# Compute SM
+# Compute the Schirokauer map 
 def compute_SM(a, sm_1_exp, nb_sm_1, l, f):
     Q.<y> = IntegerModRing(l^2)[]
     aq = Q(a); fq = Q(f); L = []
@@ -381,8 +385,7 @@ def associate(F, K, nk, column_1, nb_sm_1):
 def ind_log_0(f, B, H, F, avoid, V, col1, fbb, thresh, SM1, sm_1_exp, l):
     q = next_prime(B[0])
     # Assume we can have a relation with the previous setting
-    spq = build_ideal(f[0], q, f[0].leading_coefficient(),
-            f[0].coefficients(sparse=False)[f[0].degree() - 1])[0][0]
+    spq = build_ideal(f[0], q)[0][0]
     # Take the first relation
     r = spq_sieve(spq, 0, f, B, H, F, avoid, fbb, thresh, -1)[0]
     pseudo_ideal_facto_0 = pseudo_ideal_facto(r[0], r[1])
