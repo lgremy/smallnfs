@@ -120,6 +120,24 @@ def is_smooth_and_avoid(N, B, avoid):
 def norm(a, f):
     return abs(a.resultant(f))
 
+# Compute norm of a0 + a1 * x
+def norm_homogenization(a, f):
+    res = 0
+    if a[0] == 0 and a[1] == 0:
+        res = 0
+    if a[1] == 0:
+        res = a[0]^f.degree()
+    elif a[0] == 0:
+        res = a[1]^f.degree() * f[0]
+    else:
+        i0 = 0
+        i1 = f.degree()
+        while i1 != -1:
+            res = res + f[i0] * a[0]^i0 * (-a[1])^i1
+            i0 = i0 + 1
+            i1 = i1 - 1
+    return abs(res)
+
 # Line sieve
 # p is prime, r is positive
 def line_sieve(p, r, H, array_norms, side):
@@ -233,7 +251,7 @@ def good_rel_spq(a, f, q, qside, avoid):
     test = True
     j = 0
     while j < len(f) and test:
-        n = norm(a, f[j])
+        n = norm_homogenization(a, f[j])
         if qside == j:
             n = n / q
         facto = is_smooth_and_avoid(n, B[j], avoid[j])
@@ -503,4 +521,4 @@ def main(d, p, B, H, l, fbb, thresh):
     return (V, col1, SM1)
 
 # ---------- Run ----------
-# print(main(d, p, B, H, l, fbb, thresh))
+print(main(d, p, B, H, l, fbb, thresh))
