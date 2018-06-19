@@ -164,7 +164,7 @@ def line_sieve(p, r, H, array_norms, side):
 # (http://cado-nfs.gforge.inria.fr), see file sieve/las-plattice.h,
 # function reduce_plattice_original.
 # TODO: cleaner version
-def reduce_qlattice(M, H0, r, h):
+def reduce_qlattice(H0, r, h):
     a0 = -r
     b0 = h
     a1 = 0
@@ -179,7 +179,7 @@ def reduce_qlattice(M, H0, r, h):
             a0 = a0 - b0
         else:
             a0 = a0 % b0
-        a1 = a1 - k * b1
+        a1 = a1 - k * b1;
         if a0 > -I:
             break;
         k = int(float(b0) / float(a0))
@@ -188,7 +188,7 @@ def reduce_qlattice(M, H0, r, h):
             b0 = b0 - a0
         else:
             b0 = b0 % a0
-        b1 = b1 - k * a1
+        b1 = b1 - k * a1;
         if b0 < I:
             break
         k = int(float(a0) / float(b0))
@@ -197,7 +197,7 @@ def reduce_qlattice(M, H0, r, h):
             a0 = a0 - b0
         else:
             a0 = a0 % b0
-        a1 = a1 - k * b1
+        a1 = a1 - k * b1;
         if a0 > -I:
             break
         k = int(float(b0) / float(a0))
@@ -206,24 +206,28 @@ def reduce_qlattice(M, H0, r, h):
             b0 = b0 - a0
         else:
             b0 = b0 % a0
-        b1 = b1 - k * a1
+        b1 = b1 - k * a1;
     k = b0 - I - a0;
     if b0 > -a0:
         if a0 == 0:
-            return 0
-        k = int(float(k)/ float(a0))
+            return None
+        k = int(float(k )/ float(a0))
         b0 = b0 - k * a0
-        b1 = b1 - k * a1
+        b1 = b1 - k * a1;
     else:
         if b0 == 0:
-            return 0
-        k = int(float(k)/ float(b0))
+            return None
+        k = int(float(k )/ float(b0))
         a0 = a0 + k * b0
-        a1 = a1 + k * b1
-    assert(a0 > -I); assert(0 >= a0); assert(0 <= b0); assert(b0 < I)
-    assert(a1 > 0); assert(b1 > 0)
+        a1 = a1 + k * b1;
+    assert(a0 > -I)
+    assert(0 >= a0)
+    assert(0 <= b0)
+    assert(b0 < I)
+    assert(a1 > 0)
+    assert(b1 > 0)
 
-    return (1, vector([a0, a1]), vector([b0, b1]))
+    return (a0, a1, b0, b1)
 
 # Franke-Kleinjung sieve
 def lattice_sieve(p, r, H, L, side):
