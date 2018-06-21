@@ -335,7 +335,8 @@ def spq_sieve(ideal, qside, f, B, H, F, avoid, fbb, thresh, nb_rel):
                     a = a0 + a1 * x
                     (test, fac) = good_rel_spq(a, f, ideal[0], qside, avoid)
                     if test:
-                        rel = [a]
+                        # TODO: we Want a0 + a1 * x, with a1 < 0
+                        rel = [-a]
                         for j in range(len(fac)):
                             rel.append(fac[j])
                         R.append(tuple(rel))
@@ -402,14 +403,17 @@ def compute_SM(a, sm_1_exp, nb_sm_1, l, f):
 # Row transformation
 def row_trans(r, F, column_1, nb_sm_1, sm_1_exp, l, f1):
     L = [0 for i in range(len(F[0]) + len(F[1]) + column_1)]
-    for ideal in pseudo_ideal_facto(r[0], r[1]):
+    # TODO: -r[0] since we change the sign when we store the relation
+    for ideal in pseudo_ideal_facto(-r[0], r[1]):
         L[F[0].index(ideal[0])] = ideal[1]
-    for ideal in pseudo_ideal_facto(r[0], r[2]):
+    # TODO: -r[0] since we change the sign when we store the relation
+    for ideal in pseudo_ideal_facto(-r[0], r[2]):
         L[len(F[0]) + F[1].index(ideal[0])] = -ideal[1]
     if column_1 == 1:
         L[len(F[0]) + len(F[1])] = 1
     if nb_sm_1 != 0:
-        L = L + compute_SM(r[0], sm_1_exp, nb_sm_1, l, f1)
+        # TODO: -r[0] since we change the sign when we store the relation
+        L = L + compute_SM(-r[0], sm_1_exp, nb_sm_1, l, f1)
     return L
 
 # Build the matrix of relations
@@ -459,14 +463,17 @@ def ind_log_0(f, B, H, F, avoid, V, col1, fbb, thresh, SM1, sm_1_exp, l):
     spq = build_ideal(f[0], q)[0][0]
     # Take the first relation
     r = spq_sieve(spq, 0, f, B, H, F, avoid, fbb, thresh, -1)[0]
-    pseudo_ideal_facto_0 = pseudo_ideal_facto(r[0], r[1])
+    # TODO: -r[0] since we change the sign when we store the relation
+    pseudo_ideal_facto_0 = pseudo_ideal_facto(-r[0], r[1])
     coeff_spq = Integer(pseudo_ideal_facto_0[[i[0] for i in
         pseudo_ideal_facto_0].index(spq)][1])
+    # TODO: -r[0] since we change the sign when we store the relation
     vlog = (-(sum([V[0][i[0]] * i[1] for i in pseudo_ideal_facto_0 if i[0] in
         V[0].keys()])) + (sum([V[1][i[0]] * i[1] for i in
-            pseudo_ideal_facto(r[0], r[2])])) - col1)
+            pseudo_ideal_facto(-r[0], r[2])])) - col1)
     if len(SM1) != 0:
-        sm = compute_SM(r[0], sm_1_exp, len(SM1), l, f[1])
+        # TODO: -r[0] since we change the sign when we store the relation
+        sm = compute_SM(-r[0], sm_1_exp, len(SM1), l, f[1])
         for i in range(len(SM1)):
             vlog = vlog - sm[i] * SM1[i]
     vlog = vlog % l
@@ -474,10 +481,10 @@ def ind_log_0(f, B, H, F, avoid, V, col1, fbb, thresh, SM1, sm_1_exp, l):
     V[0][spq] = vlog
 
 # ---------- Data ----------
-# l = 3141592653589793238462773; p = 2 * l + 1; d = 3; B = [4096, 4096]
-# H = [2^7, 2^7]; fbb = [B[0] // 4, B[1] // 4]; thresh = [B[0]^3, B[1]^3]
-(l, p) = build_target(20); d = 2; B = [2^7, 2^7]; H = [2^5, 2^5]
-fbb = [B[0] // 4, B[1] // 4]; thresh = [B[0]^3, B[1]^3]
+l = 3141592653589793238462773; p = 2 * l + 1; d = 3; B = [4096, 4096]
+H = [2^7, 2^7]; fbb = [B[0] // 4, B[1] // 4]; thresh = [B[0]^3, B[1]^3]
+# (l, p) = build_target(20); d = 2; B = [2^7, 2^7]; H = [2^5, 2^5]
+# fbb = [B[0] // 4, B[1] // 4]; thresh = [B[0]^3, B[1]^3]
 # (l, p) = build_target(10); d = 3; B = [2^7, 2^7]; H = [2^5, 2^5]
 # fbb = [B[0] // 4, B[1] // 4]; thresh = [B[0]^3, B[1]^3]
 
